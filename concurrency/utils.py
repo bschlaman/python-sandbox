@@ -5,6 +5,7 @@ import aiohttp
 
 
 async def fetch_data_delayed_async(delay_seconds: int):
+    print(f"[...work: {delay_seconds}]")
     url = "http://pi4:8081/api/echodelay?t={t}"
     async with aiohttp.ClientSession() as client:
         async with client.get(url.format(t=delay_seconds)) as res:
