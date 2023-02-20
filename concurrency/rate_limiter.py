@@ -29,6 +29,7 @@ def start():
 """
 import asyncio
 from enum import Enum
+from typing import Coroutine, Iterable
 import utils
 import time
 
@@ -39,13 +40,12 @@ class RateLimitMode(Enum):
 
 
 class RateLimiter:
-    def __init__(self, coros: list, mode: RateLimitMode):
+    def __init__(self, coros: Iterable[Coroutine], mode: RateLimitMode):
         self._exec_func = {
             RateLimitMode.BY_CONCURRENCY: self._by_concurrency,
             RateLimitMode.BY_RATE: self._by_rate,
         }[mode]
         self.coros = coros
-
 
     async def begin_execution(self) -> list[dict]:
         return await self._exec_func()
@@ -53,13 +53,13 @@ class RateLimiter:
     async def _by_concurrency(self):
         """Ratelimit based on number of concurrent executions"""
         sem = asyncio.Semaphore(2)
-        pending_tasks = []
+        tasks = []
         for coro in self.coros:
             await sem.acquire()
             task = asyncio.create_task(coro)
             task.add_done_callback(lambda _: sem.release())
-            pending_tasks.append(task)
-        return await asyncio.gather(*pending_tasks)
+            tasks.append(task)
+        return await asyncio.gather(*tasks)
 
     async def _by_rate(self):
         """Ratelimit based on a fixed rate of tps"""
@@ -78,7 +78,6 @@ delays = [2, 1, 4, 2, 5, 1]
 async def main():
     print("creating tasks")
     coros = [utils.fetch_data_delayed_async(delay) for delay in delays]
-
 
     start_time = time.time()
 
